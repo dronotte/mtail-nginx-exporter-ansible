@@ -1,0 +1,73 @@
+---
+- name: Check that the mtail binary exists
+  stat:
+    path: /usr/local/bin/mtail
+  register: mtail_exists
+
+- name: Check that git package exists
+  stat: path=/usr/bin/git
+  register: git_exists
+
+- name: Install git
+  package: "name=git state=present"
+  when: not git_exists.stat.exists
+
+- name: Install gcc
+  package: "name=gcc state=present"
+  when: not mtail_exists.stat.exists
+
+- name: Check that golang package exists
+  stat:
+    path: /usr/bin/go
+  register: go_exists
+
+
+- name: Install golang
+  ansible.builtin.unarchive:
+    src: https://golang.org/dl/go1.16.7.linux-amd64.tar.gz
+    dest: /usr/local/
+    remote_src: yes
+  when: not go_exists.stat.exists
+
+
+- name: Create symlink to go
+  ansible.builtin.file:
+    src: /usr/local/go/bin/go
+    dest: /usr/bin/go
+    state: link
+
+- name: Install mtail
+  shell: "rm -rf /root/mtail && \
+    git clone https://github.com/google/mtail && \
+    cd mtail && \
+    go get github.com/google/mtail/cmd/mtail && \
+    mv /root/go/bin/mtail /usr/local/bin/mtail && \
+    rm -rf /root/mtail"
+  when: not mtail_exists.stat.exists
+
+
+- name: Create mtail conf directory
+  file:
+    state: directory
+    path: /etc/mtail
+  when: not mtail_exists.stat.exists
+
+- name: Set the  mtail conf file
+  template:
+    src: nginx.mtail.j3
+    dest: "/etc/mtail/nginx.mtail"
+    mode: '644'
+
+- name: Set the systemd mtail service
+  template:
+    src: nginx-exporter.service.j2
+    dest: "/etc/systemd/system/nginx-exporter.service"
+    mode: '644'
+  notify:
+  - Restart mtail
+
+- name: Start and enable mtail service
+  service:
+    name: "nginx-exporter.service"
+    enabled: true
+    state: started

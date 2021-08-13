@@ -1,0 +1,3 @@
+nginx_access_logs: /var/log/nginx/access.log
+
+nginx_exporter_port: 3093

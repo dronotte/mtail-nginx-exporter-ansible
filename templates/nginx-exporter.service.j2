@@ -1,0 +1,11 @@
+[Unit]
+Description=nginx exporter
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/mtail \
+    -logtostderr \
+    -port {{ nginx_exporter_port }} \
+    -progs /etc/mtail \
+    -logs \
+    {{ nginx_access_logs }}
